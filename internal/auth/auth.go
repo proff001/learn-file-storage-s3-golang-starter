@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type TokenType string
@@ -23,15 +23,19 @@ const (
 var ErrNoAuthHeaderIncluded = errors.New("no auth header included in request")
 
 func HashPassword(password string) (string, error) {
-	dat, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
 		return "", err
 	}
-	return string(dat), nil
+	return hash, nil
 }
 
-func CheckPasswordHash(password, hash string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+func CheckPasswordHash(password, hash string) (bool, error) {
+	match, err := argon2id.ComparePasswordAndHash(password, hash)
+	if err != nil {
+		return false, err
+	}
+	return match, nil
 }
 
 func MakeJWT(
